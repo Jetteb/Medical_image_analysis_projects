@@ -122,7 +122,11 @@ def image_transform(I, Th,  output_shape=None):
     # TODO: Perform inverse coordinates mapping.
     #------------------------------------------------------------------#
 
-    Th_inv = np.linalg.inv(Th)
+    if np.linalg.det(Th) < 0.00001:
+        Th_inv = np.linalg.pinv(Th)
+    else:
+        Th_inv = np.linalg.inv(Th)
+        
     Xt = np.dot(Th_inv, Xh)
         
     It = ndimage.map_coordinates(I, [Xt[1,:], Xt[0,:]], order=1, mode='constant').reshape(output_shape)
@@ -143,12 +147,12 @@ def ls_solve(A, b):
     # TODO: Implement the least-squares solution for w.
     #------------------------------------------------------------------#
 
-    w, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
+    w = np.linalg.lstsq(A, b, rcond=None)[0]
     
     # compute the error
     E = np.transpose(A.dot(w) - b).dot(A.dot(w) - b)
 
-    return w, E
+    return w, E 
 
 
 def ls_affine(X, Xm):
@@ -164,15 +168,34 @@ def ls_affine(X, Xm):
     #------------------------------------------------------------------#
     # TODO: Implement least-squares fitting of an affine transformation.
     # Use the ls_solve() function that you have previously implemented.
+    
+    x_coord = X[0,:]
+    y_coord = X[1,:]
+    
+    
+    x_coord = x_coord.T
+    x_coord = x_coord.reshape(-1,1)
+    y_coord = y_coord.T
+    y_coord = y_coord.reshape(-1,1)
+    
+    solve1, E= ls_solve(A, x_coord)
+    solve2, E = ls_solve(A, y_coord)
+    
+    solve1 = solve1.T
+    print(solve1)
+    solve2 = solve2.T
+    
+    #thirdrow = np.array([0, 0, 1])
+    
+    T = np.concatenate((solve1, solve2,np.array([[0],[0],[1]]).reshape(1,-1)), axis = 0)
     #------------------------------------------------------------------#
     
-    w, E = ls_solve(A, np.transpose(X))
+    #w, E = ls_solve(A, np.transpose(X))
 
-    T = util.c2h(w)
+    #T = util.c2h(w)
 
 
     return T
-
 
 # SECTION 3. Image simmilarity metrics
 
@@ -424,14 +447,15 @@ def affine_corr(I, Im, x, return_transform=True):
     # Im_t - transformed moving image T(Im)
     # Th - transformation matrix (only returned if return_transform=True)
     
+
     NUM_BINS = 64
     SCALING = 100
     
-    T = rotate(x[4])
+    T = rotate(x[0])
     
-    T = np.dot(T, scale(x[2], x[3]))
+    T = np.dot(T, scale(x[1], x[2]))
     
-    T = np.dot(T, shear(x[0], x[1]))
+    T = np.dot(T, shear(x[3], x[4]))
     
     Th = util.t2h(T, x[5:]*SCALING)
 
@@ -471,11 +495,11 @@ def affine_mi(I, Im, x, return_transform=True):
     NUM_BINS = 64
     SCALING = 100
     
-    T = rotate(x[4])
+    T = rotate(x[0])
     
-    T = np.dot(T, scale(x[2], x[3]))
+    T = np.dot(T, scale(x[1], x[2]))
     
-    T = np.dot(T, shear(x[0], x[1]))
+    T = np.dot(T, shear(x[3], x[4]))
     
     Th = util.t2h(T, x[5:]*SCALING)
 
