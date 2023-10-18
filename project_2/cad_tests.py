@@ -383,6 +383,9 @@ class n_hidden_neural_network:
         #util.visualize_big_small_images(self.training_x, self.training_y, training_images.shape)
         #util.visualize_big_small_images(training_images, self.training_y)
 
+    # Initialize the weights of the model according to the shapes that are given for the network.
+    # We initialize all weights with random numbers that are then multiplied by 2 and subtracted by one.
+    # This method was also used in the given network. The weights are then returned
     def init_model(self, w_shapes):
 
         weights = {}
@@ -391,6 +394,12 @@ class n_hidden_neural_network:
 
         return weights 
             
+    # In this function the shapes of the network will be defined. They will have X amount
+    # of hidden features given by the variable hidden_features. This would make a layer have shape (100,100)
+    #  in the case of 100 hidden features. The amount of layers is defined by num_hidden_layers.
+    # The first layer of the network takes on the shape of the training data and the hidden_features, making the first layer (shape(training_data), hidden_features)
+    # Then, the amount of hidden layers-1 is added. This is because in order to make this a classification we need to scale down to a matrix (1,1) and therefore we need
+    # 2 layers before this of shape (hidden_features, 1) to create this. Then, these shapes are converted to weight matrices in the function init_model. the weights are returned
     def define_shapes(self,  hidden_features, num_hidden_layers):
         in_features = self.training_x.shape[1]
         out_features = 1  
@@ -407,7 +416,9 @@ class n_hidden_neural_network:
         
         return weights
         
-
+    # This function is the same as the original provided function, so it trains the network. The changes are parameter changes for define_shapes, forward and backward.
+    # Furthermore, the parameters of the network (learing_rate, batchsize, n_hidden_features, num_hidden_layers) can now be changed by the user.
+    
     def launch_training(self, learning_rate, batchsize, hidden_features, num_hidden_layers, epochs = 100):
         
         
@@ -474,7 +485,7 @@ class n_hidden_neural_network:
             plt.show()
         print('> Training finished')
             
-            
+    # Same as in the provided function. Computes the test accuracy of the model.
     def pass_on_test_set(self):
         
         # Forward pass on test set
@@ -495,7 +506,10 @@ class n_hidden_neural_network:
         
         return test_accuracy
         
-   
+   # the forward function is modified such that it can handle an adaptive number of hidden layers. First we say that the hidden_layers parameter containing the forwarding
+   # of the network to contain x, the training data which is essentially where the network starts. Then, this is passed through the number of hidden layers where of the weights and the previous hidden layer
+   # the dot product is taken and put into the sigmoid function, much like in the original network. Then, the output is created by taking the last sigmoid of the weights with the last hidden_layer.
+   # These are finally returned.
     def forward(self, x, weights, num_hidden_layers):
         hidden_layers = [x]
         
@@ -507,9 +521,14 @@ class n_hidden_neural_network:
         output = util.sigmoid(np.dot(hidden_layers[-1], weights[f'w{num_hidden_layers+1}']))
         return hidden_layers, output
     
+    # The backward function now takes the derivative of the differnt formulas of the layers and by doing this loops backwards over the layers.
+    # We first define the gradient list which is the amount of layers (hidden+output+input). Then, the derivative is taken from the output and saved in the gradient array needed for the updating.
+    # Then, we loop over the amount of hidden layers again and compute all the derivatives of the layers and save the gradients. Finally, the last gradient is taken of the input layer and all the layers
+    # are then updated by multiplying the gradients with the learning rate and adding this change to the weight. These weights are then returned.
     def backward(self, x, y, output, hidden_layers, weights, learning_rate, num_hidden_layers):
+        
         num_layers = num_hidden_layers + 1
-        gradients = [None] * (num_layers + 1)
+        gradients = [None] * (num_layers+1)
 
         delta_output = 2 * (output - y) * util.sigmoid_derivative(output)
         gradients[num_layers] = np.dot(hidden_layers[-1].T, delta_output)

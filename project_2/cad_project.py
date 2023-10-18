@@ -50,8 +50,6 @@ def nuclei_measurement(reduce = False, fraction = None):
 
     if not reduce:
 
-
-
         ## training linear regression model
         #---------------------------------------------------------------------#
         # TODO: Implement training of a linear regression model for measuring
