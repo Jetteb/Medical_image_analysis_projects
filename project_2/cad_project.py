@@ -10,10 +10,10 @@ import cad
 import scipy
 from IPython.display import display, clear_output
 import scipy.io
+from sklearn.metrics import accuracy_score
 
-
-def nuclei_measurement():
-
+def nuclei_measurement(reduce = False, fraction = None):
+    
     fn = '../data/nuclei_data.mat'
     mat = scipy.io.loadmat(fn)
     test_images = mat["test_images"] # shape (24, 24, 3, 20730)
@@ -46,30 +46,41 @@ def nuclei_measurement():
     training_x = training_images.reshape(numFeatures, imageSize[3]).T.astype(float)
     test_x = test_images.reshape(numFeatures, test_images.shape[3]).T.astype(float)
 
-    ## training linear regression model
-    #---------------------------------------------------------------------#
-    # TODO: Implement training of a linear regression model for measuring
-    # the area of nuclei in microscopy images. Then, use the trained model
-    # to predict the areas of the nuclei in the test dataset.
-    #---------------------------------------------------------------------#
-    
-    training_x_1 = util.addones(training_x)
-    
-    theta, E = reg.ls_solve(training_x_1, training_y)
-    
-    test_x_1 = util.addones(test_x)
-
-    predicted_y = np.dot(test_x_1, theta)
-    
-
-    # visualize the results
     fig2 = plt.figure(figsize=(16,8))
-    ax1  = fig2.add_subplot(121)
-    line1, = ax1.plot(test_y, predicted_y, ".g", markersize=3)
-    ax1.grid()
-    ax1.set_xlabel('Area')
-    ax1.set_ylabel('Predicted Area')
-    ax1.set_title('Training with full sample')
+
+    if not reduce:
+
+
+
+        ## training linear regression model
+        #---------------------------------------------------------------------#
+        # TODO: Implement training of a linear regression model for measuring
+        # the area of nuclei in microscopy images. Then, use the trained model
+        # to predict the areas of the nuclei in the test dataset.
+        #---------------------------------------------------------------------#
+        
+        training_x_1 = util.addones(training_x)
+        
+        theta, E = reg.ls_solve(training_x_1, training_y)
+        
+        test_x_1 = util.addones(test_x)
+
+        predicted_y = np.dot(test_x_1, theta)
+        
+
+        # visualize the results
+        ax1  = fig2.add_subplot(121)
+        line1, = ax1.plot(test_y, predicted_y, ".g", markersize=3)
+        ax1.grid()
+        ax1.set_xlabel('Area')
+        ax1.set_ylabel('Predicted Area')
+        ax1.set_title('Training with full sample')
+    
+        E_test = np.sum((test_x_1.dot(theta) - test_y) ** 2) / (2 * len(test_y))
+        print('test error full:', E_test)
+
+        return E_test
+
 
     #training with smaller number of training samples
     #---------------------------------------------------------------------#
@@ -78,36 +89,41 @@ def nuclei_measurement():
     #---------------------------------------------------------------------#
     
     # Select every fourth sample
-    reduced_training_x = training_x[::4]  
-    reduced_training_y = training_y[::4]
-
-    reduced_training_x_1 = util.addones(reduced_training_x)
-
-    theta_reduced, E = reg.ls_solve(reduced_training_x_1, reduced_training_y)
-    
-    predicted_y_reduced = np.dot(test_x_1, theta)
-    
-
-    # visualize the results
-    ax2  = fig2.add_subplot(122)
-    line2, = ax2.plot(test_y, predicted_y_reduced, ".g", markersize=3)
-    ax2.grid()
-    ax2.set_xlabel('Area')
-    ax2.set_ylabel('Predicted Area')
-    ax2.set_title('Training with smaller sample')
-    
-    
-    test_x_1 = util.addones(test_x)
-
-    E_test = np.sum((test_x_1.dot(theta) - test_y) ** 2) / (2 * len(test_y))
-    E_test_reduced = np.sum((test_x_1.dot(theta_reduced) - test_y) ** 2) / (2 * len(test_y))
-     
-    print('test error full:', E_test)
-    print('test error reduced:' , E_test_reduced)
+    else:
+        test_x_1 = util.addones(test_x)
+        num_samples = int(training_x.shape[0] * fraction)
+        selected_indices = np.random.choice(training_x.shape[0], num_samples, replace=False)
 
 
+        reduced_training_x = training_x[selected_indices]
+        reduced_training_y = training_y[selected_indices]
 
-def nuclei_classification(mu, num_iterations, batch_size, reduced_train_data = False):
+        reduced_training_x_1 = util.addones(reduced_training_x)
+
+        theta_reduced, E = reg.ls_solve(reduced_training_x_1, reduced_training_y)
+        
+        predicted_y_reduced = np.dot(test_x_1, theta_reduced)
+        
+
+        # visualize the results
+        ax2  = fig2.add_subplot(111)
+        line2, = ax2.plot(test_y, predicted_y_reduced, ".g", markersize=3)
+        ax2.grid()
+        ax2.set_xlabel('Area')
+        ax2.set_ylabel('Predicted Area')
+        ax2.set_title('Training with '+ str(fraction)+ 'sample')
+        
+        
+        E_test_reduced = np.sum((test_x_1.dot(theta_reduced) - test_y) ** 2) / (2 * len(test_y))
+        
+        print('test error reduced:' , E_test_reduced)
+        
+        return E_test_reduced
+
+
+
+
+def nuclei_classification(mu, num_iterations, batch_size, reduced_train_data = False, visualization = True):
     ## dataset preparation
     fn = '../data/nuclei_data_classification.mat'
     mat = scipy.io.loadmat(fn)
@@ -199,9 +215,10 @@ def nuclei_classification(mu, num_iterations, batch_size, reduced_train_data = F
         Theta_new = None
         tmp = None
 
+    # if visualization:
     display(fig)
-    # clear_output(wait = True)
-    # plt.pause(.005)
+        # clear_output(wait = True)
+        # plt.pause(.005)
     
     # compute accuracy
     test_x_ones = util.addones(test_x)
@@ -211,11 +228,11 @@ def nuclei_classification(mu, num_iterations, batch_size, reduced_train_data = F
     predicted_labels = (predicted_probabilities >= 0.5).astype(int)
 
     # Calculate the accuracy
-    accuracy = np.mean(predicted_labels == test_y)
+    accuracy = accuracy_score(test_y, predicted_labels)
     print(f"Test accuracy: {accuracy * 100:.2f}%")
     
     
 
-    return mu, num_iterations, batch_size, loss
+    return accuracy, loss, validation_loss, batch_size, mu, num_iterations
 
         
